@@ -79,7 +79,7 @@ export default function HotelDetailScreen({route}) {
     };
     fetchReviews();
   }, [roomId]);
-  console.log('adminId:', adminId); 
+  console.log('adminId:', adminId);
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -218,7 +218,7 @@ export default function HotelDetailScreen({route}) {
                 source={require('../assets/car.png')}
                 style={styles.icon}
               />
-               <Text style={styles.detailText}>2Chỗ</Text>
+              <Text style={styles.detailText}>2Chỗ</Text>
             </View>
           </View>
         </View>
@@ -319,10 +319,25 @@ export default function HotelDetailScreen({route}) {
           {/* Hiển thị top 2 đánh giá (nếu có) */}
           {reviews.slice(0, 2).map((r, idx) => (
             <View key={r._id || idx} style={styles.reviewItem}>
-              <Text style={styles.reviewUser}>
-                {r.user?.username || 'Người dùng'}
-              </Text>
-              <Text style={styles.reviewRating}>★ {r.rating}</Text>
+              <View style={styles.reviewHeader}>
+                <View style={styles.userInfo}>
+                  <Image
+                    source={
+                      r.user?.avatar
+                        ? {uri: `${api.defaults.baseURL}${r.user.avatar}`} // Thêm baseURL vào trước đường dẫn avatar
+                        : require('../assets/user.png')
+                    }
+                    style={styles.userAvatar}
+                    defaultSource={require('../assets/user.png')} // Thêm defaultSource để hiển thị khi load lỗi
+                  />
+                  <View style={styles.userTextInfo}>
+                    <Text style={styles.reviewUser}>
+                      {r.user?.username || 'Người dùng'}
+                    </Text>
+                    <Text style={styles.reviewRating}>★ {r.rating}</Text>
+                  </View>
+                </View>
+              </View>
               <Text style={styles.reviewComment}>{r.comment}</Text>
             </View>
           ))}
@@ -343,7 +358,10 @@ export default function HotelDetailScreen({route}) {
               navigation.navigate('SelectDate', {
                 roomId: roomId,
                 pricePerNight: hotel.price,
-                hotelImage: hotel.room_images && hotel.room_images[0] ? hotel.room_images[0] : null,
+                hotelImage:
+                  hotel.room_images && hotel.room_images[0]
+                    ? hotel.room_images[0]
+                    : null,
                 hotelTitle: hotel.room_name,
                 hotelAddress: hotel.address,
                 hotelRating: hotel.rating,
@@ -351,7 +369,7 @@ export default function HotelDetailScreen({route}) {
                 currency: 'VND',
                 roomType: hotel.details.room_type,
                 roomDetails: hotel.details,
-              })
+              });
             }}>
             <Text style={styles.buttonText}>Đặt ngay</Text>
           </TouchableOpacity>
@@ -527,7 +545,7 @@ const styles = StyleSheet.create({
   },
   reviewHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between', // Đưa tiêu đề sang trái, nút sang phải
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
   },
@@ -546,7 +564,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     marginTop: 10,
-    // Shadow (nếu muốn)
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
@@ -556,16 +573,18 @@ const styles = StyleSheet.create({
   reviewUser: {
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 4,
+    fontSize: 14,
   },
   reviewRating: {
     color: '#FFB800',
-    marginBottom: 4,
+    marginTop: 2,
+    fontSize: 12,
   },
   reviewComment: {
     fontSize: 14,
     color: '#333',
     lineHeight: 20,
+    marginTop: 4,
   },
 
   footer: {
@@ -610,5 +629,18 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  userAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  userTextInfo: {
+    justifyContent: 'center',
   },
 });

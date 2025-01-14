@@ -48,7 +48,7 @@ const WishlistScreen = () => {
   };
 
   const navigateToHotelDetail = room => {
-    navigation.navigate('HotelDetail', {hotelId: room._id});
+    navigation.navigate('HotelDetail', {roomId: room._id});
   };
 
   // Hàm render cho FlatList

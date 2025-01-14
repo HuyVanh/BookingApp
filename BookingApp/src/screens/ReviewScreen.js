@@ -58,33 +58,38 @@ export default function ReviewScreen() {
   const renderItem = ({item}) => {
     return (
       <View style={styles.reviewCard}>
-        <View style={styles.avatarContainer}>
-          <Image
-            source={item.user?.avatar ? {uri: item.user.avatar} : require('../assets/user.png')}
-            style={styles.avatar}
-          />
-        </View>
-        <View style={styles.reviewContent}>
-          <View style={styles.reviewHeader}>
-            <Text style={styles.reviewName}>
-              {item.user?.username || 'Người dùng'}
-            </Text>
-            <View style={styles.ratingBadge}>
-              <Text style={styles.ratingBadgeText}>★ {item.rating}</Text>
-            </View>
-          </View>
-          <Text style={styles.reviewDate}>
-            {item.review_date ? 
-              new Date(item.review_date).toLocaleDateString('vi-VN', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric'
-              })
-              : 'Không có ngày'}
-          </Text>
-          <Text style={styles.reviewComment}>{item.comment}</Text>
-        </View>
+      <View style={styles.avatarContainer}>
+        <Image
+          source={
+            item.user?.avatar 
+              ? { uri: `${api.defaults.baseURL}${item.user.avatar}` }  // Thêm baseURL
+              : require('../assets/user.png')
+          }
+          style={styles.avatar}
+          defaultSource={require('../assets/user.png')}  // Ảnh mặc định khi load lỗi
+        />
       </View>
+      <View style={styles.reviewContent}>
+        <View style={styles.reviewHeader}>
+          <Text style={styles.reviewName}>
+            {item.user?.username || 'Người dùng'}
+          </Text>
+          <View style={styles.ratingBadge}>
+            <Text style={styles.ratingBadgeText}>★ {item.rating}</Text>
+          </View>
+        </View>
+        <Text style={styles.reviewDate}>
+          {item.review_date ? 
+            new Date(item.review_date).toLocaleDateString('vi-VN', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric'
+            })
+            : 'Không có ngày'}
+        </Text>
+        <Text style={styles.reviewComment}>{item.comment}</Text>
+      </View>
+    </View>
     );
   };
   if (loading) {
