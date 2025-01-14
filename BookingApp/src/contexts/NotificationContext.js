@@ -29,13 +29,12 @@ export const NotificationProvider = ({ children }) => {
   useEffect(() => {
     if (!user?.token) return;
 
-    const socket = io('http://192.168.100.101:5000', {
+    const socket = io('https://backendbookingapp-2fav.onrender.com', {
       transports: ['websocket'],
       auth: { token: user?.token }
     });
 
     socket.on('connect', () => {
-      console.log('Socket connected:', socket.id);
       const ADMIN_ID = '675be60b39fcd18e034a7a9d';
       const currentUserId = user?.user?._id;
       const roomId = `chat_${ADMIN_ID}_${currentUserId}`;
@@ -44,13 +43,12 @@ export const NotificationProvider = ({ children }) => {
     });
 
     socket.on('new_message', async message => {
-      console.log('New message received:', message);
       if (message?.sender?._id === '675be60b39fcd18e034a7a9d') {
         const newCount = unreadMessages + 1;
         setUnreadMessages(newCount);
         try {
           await AsyncStorage.setItem('unreadMessages', String(newCount));
-          console.log('Unread messages updated:', newCount);
+
         } catch (error) {
           console.error('Error saving unread count:', error);
         }
@@ -64,7 +62,6 @@ export const NotificationProvider = ({ children }) => {
     try {
       await AsyncStorage.setItem('unreadMessages', '0');
       setUnreadMessages(0);
-      console.log('Reset unread messages');
     } catch (error) {
       console.error('Error resetting messages:', error);
     }

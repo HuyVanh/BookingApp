@@ -25,8 +25,6 @@ const BookMarkScreen = () => {
     try {
       const response = await api.get('/bookings/user-bookings');
       const rooms = response.data;
-      console.log('Dữ liệu phòng đã đặt:', rooms);
-
       if (Array.isArray(rooms)) {
         const formattedRooms = rooms.map(room => ({
           ...room,

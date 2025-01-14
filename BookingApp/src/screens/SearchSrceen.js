@@ -26,11 +26,45 @@ export default function SearchScreen() {
   const [popularRooms, setPopularRooms] = useState([]);
   const [trendingRooms, setTrendingRooms] = useState([]);
   const [favoriteRooms, setFavoriteRooms] = useState([]);
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const {user} = useContext(AuthContext);
   const [searchText, setSearchText] = useState('');
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [totalRooms, setTotalRooms] = useState(0);
+
+
+
+  const handleSearch = () => {
+    console.log('Searching for:', searchQuery);
+    if (!searchQuery.trim()) {
+      setSelectedCategory('Tất cả');
+      setSearchResults([]);
+      return;
+    }
+    
+    // Trigger search bằng cách update searchQuery
+    setSearchQuery(searchQuery.trim());
+  };
+useEffect(() => {
+  if (searchQuery) {  // Chỉ search khi có query
+    const results = allRooms.filter(room => {
+      const searchLower = searchQuery.toLowerCase().trim();
+      return (
+        room.room_name?.toLowerCase().includes(searchLower) ||
+        room.address?.toLowerCase().includes(searchLower)
+      );
+    });
+    console.log('Search results:', results.length);
+    setSearchResults(results);
+    setSelectedCategory('Tất cả');
+  } else {
+    setSearchResults([]);
+    setSelectedCategory('Gợi ý cho bạn');
+  }
+}, [searchQuery, allRooms]); 
+
 
   const [filters, setFilters] = useState({
     sortBy: null, // Khởi tạo là null
@@ -129,7 +163,7 @@ export default function SearchScreen() {
     // Sort logic
     let matchesSort = true;
     if (filters.sortBy === 'Giá tiền cao nhất') {
-      matchesSort = true; 
+      matchesSort = true;
     } else if (filters.sortBy === 'Giá tiền thấp nhất') {
       matchesSort = true;
     } else if (filters.sortBy === 'Đánh giá cao nhất') {
@@ -164,6 +198,10 @@ export default function SearchScreen() {
   });
 
   const getCategoryData = () => {
+    if (searchQuery.trim()) {
+      return searchResults;
+    }
+  
     let rooms;
     switch (selectedCategory) {
       case 'Tất cả':
@@ -206,8 +244,9 @@ export default function SearchScreen() {
     if (Object.values(filters.types).some(v => v)) {
       rooms = rooms.filter(room => {
         if (!room.details?.room_type) return false;
-        return Object.entries(filters.types).some(([type, isSelected]) => 
-          isSelected && room.details.room_type.toLowerCase() === type.toLowerCase()
+        return Object.entries(filters.types).some(
+          ([type, isSelected]) =>
+            isSelected && room.details.room_type.toLowerCase() === type.toLowerCase()
         );
       });
     }
@@ -224,7 +263,7 @@ export default function SearchScreen() {
     return rooms;
   };
   const handleHotelPress = room => {
-    navigation.getParent()?.navigate('HotelDetail', {roomId: room._id}); 
+    navigation.getParent()?.navigate('HotelDetail', {roomId: room._id});
   };
 
   // Fetch rooms từ API
@@ -291,27 +330,49 @@ export default function SearchScreen() {
       </View>
 
       {/* Search bar */}
+      {/* Search bar */}
       <View style={styles.searchContainer}>
-        <TouchableOpacity>
-          <Image
-            source={require('../assets/searchClose.png')}
-            style={styles.searchIcon}
-          />
-        </TouchableOpacity>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Tìm kiếm"
-          placeholderTextColor="#888"
-          value={searchText}
-          onChangeText={setSearchText}
-        />
-        <TouchableOpacity onPress={() => setIsModalVisible(true)}>
-          <Image
-            source={require('../assets/textalign-left.png')}
-            style={styles.searchIcon}
-          />
-        </TouchableOpacity>
-      </View>
+  <TouchableOpacity onPress={handleSearch}>
+    <Image
+      source={require('../assets/searchClose.png')}
+      style={styles.searchIcon}
+    />
+  </TouchableOpacity>
+  <TextInput
+    style={styles.searchInput}
+    placeholder="Nhập tên khách sạn..."
+    placeholderTextColor="#888"
+    value={searchQuery}
+    onChangeText={(text) => {
+      setSearchQuery(text);
+      if (!text.trim()) {
+        setSelectedCategory('Gợi ý cho bạn');
+        setSearchResults([]);
+      }
+    }}
+    onSubmitEditing={handleSearch}
+    returnKeyType="search"
+  />
+  {searchQuery ? (
+    <TouchableOpacity onPress={() => {
+      setSearchQuery('');
+      setSearchResults([]);
+      setSelectedCategory('Gợi ý cho bạn');
+    }}>
+      <Image
+        source={require('../assets/searchClose.png')}
+        style={styles.searchIcon}
+      />
+    </TouchableOpacity>
+  ) : (
+    <TouchableOpacity onPress={() => setIsModalVisible(true)}>
+      <Image
+        source={require('../assets/textalign-left.png')}
+        style={styles.searchIcon}
+      />
+    </TouchableOpacity>
+  )}
+</View>
 
       {/* Categories */}
       <View style={styles.categoriesContainer}>
@@ -325,7 +386,7 @@ export default function SearchScreen() {
               ]}
               onPress={() => {
                 if (selectedCategory === category) {
-                  setSelectedCategory('Gợi ý cho bạn');
+                  setSelectedCategory('Tất cả');
                 } else {
                   setSelectedCategory(category);
                 }

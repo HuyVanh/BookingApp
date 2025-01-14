@@ -7,12 +7,107 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import api from '../services/api';
 import {AuthContext} from '../contexts/AuthContext';
 import {NotificationContext} from '../navigation/NotificationContext';
 import io from 'socket.io-client';
+
+const LoadingSkeleton = () => {
+  const animatedValue = React.useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(animatedValue, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(animatedValue, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    animation.start();
+
+    // Cleanup khi component unmount
+    return () => {
+      animation.stop();
+    };
+  }, [animatedValue]);
+
+  const opacity = animatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.3, 0.7],
+  });
+
+  const SkeletonCard = () => (
+    <View style={styles.card}>
+      <Animated.View
+        style={[
+          styles.skeletonImage,
+          {
+            opacity,
+          },
+        ]}
+      />
+      <View style={styles.cardDetails}>
+        <Animated.View
+          style={[
+            styles.skeletonText,
+            {
+              opacity,
+              width: '70%',
+              height: 20,
+              marginBottom: 8,
+            },
+          ]}
+        />
+        <Animated.View
+          style={[
+            styles.skeletonText,
+            {
+              opacity,
+              width: '90%',
+              height: 16,
+              marginBottom: 4,
+            },
+          ]}
+        />
+        <Animated.View
+          style={[
+            styles.skeletonText,
+            {
+              opacity,
+              width: '50%',
+              height: 16,
+            },
+          ]}
+        />
+      </View>
+    </View>
+  );
+
+  return (
+    <View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.cardContainer}>
+        <SkeletonCard />
+        <SkeletonCard />
+        <SkeletonCard />
+      </ScrollView>
+    </View>
+  );
+};
 
 const HomeScreen = () => {
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -48,11 +143,11 @@ const HomeScreen = () => {
   useEffect(() => {
     fetchNotifications();
   }, []);
+
   useEffect(() => {
     if (!user?.token) return;
 
-    // Khởi tạo socket connection
-    const newSocket = io('http://192.168.100.101:5000', {
+    const newSocket = io('https://backendbookingapp-2fav.onrender.com', {
       transports: ['websocket'],
       auth: {
         token: user?.token,
@@ -61,8 +156,6 @@ const HomeScreen = () => {
 
     newSocket.on('connect', () => {
       console.log('Socket connected in Home:', newSocket.id);
-
-      // Join room khi kết nối thành công
       const ADMIN_ID = '675be60b39fcd18e034a7a9d';
       const currentUserId = user?.user?._id;
       const roomId = `chat_${ADMIN_ID}_${currentUserId}`;
@@ -74,11 +167,8 @@ const HomeScreen = () => {
       console.log('Joined chat room:', roomId);
     });
 
-    // Sửa lại phần lắng nghe tin nhắn mới
     newSocket.on('new_message', message => {
       console.log('Raw message received:', message);
-
-      // Kiểm tra chi tiết message
       if (!message || !message.sender) {
         console.log('Invalid message format');
         return;
@@ -93,7 +183,6 @@ const HomeScreen = () => {
       }
     });
 
-    // Thêm socket event handlers khác
     newSocket.on('room_joined', data => {
       console.log('Successfully joined room:', data);
     });
@@ -108,33 +197,25 @@ const HomeScreen = () => {
 
     setSocket(newSocket);
 
-    // Cleanup khi component unmount
     return () => {
       if (newSocket) {
         newSocket.disconnect();
-        
       }
     };
   }, [user, increaseUnreadMessages]);
 
-  // Thêm log để theo dõi unreadMessages
-  useEffect(() => {
-    
-  }, [unreadMessages]); 
-
-  useEffect(() => {
-    
-  }, [unreadMessages]);
-
   const handleViewAll = () => {
     navigation.navigate('BookMark');
   };
+
   const handleViewAllroom = () => {
     navigation.navigate('AllroomScreen');
   };
+
   const handleNotification = () => {
     navigation.navigate('Notification');
   };
+
   const handleChat = () => {
     const ADMIN_ID = '674eb2757ea4d3821cb1624e';
     const currentUserId = user?.user?._id;
@@ -148,24 +229,14 @@ const HomeScreen = () => {
     });
   };
 
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      fetchNotifications();
-    });
-
-    return unsubscribe;
-  }, [navigation]);
-  useEffect(() => {
-    fetchNotifications();
-  }, []);
   const handleWishlist = () => {
     navigation.navigate('Wishlist', {bookmarkedHotels: []});
   };
+
   const handleHotelPress = room => {
     navigation.getParent().navigate('HotelDetail', {roomId: room._id});
   };
 
-  // Lấy dữ liệu từ API
   const fetchRooms = async () => {
     setLoading(true);
     try {
@@ -202,15 +273,28 @@ const HomeScreen = () => {
       setBookedRoomsData(activeBookings);
     } catch (error) {
       console.error('Error fetching booked rooms:', error);
-      if (error.response) {
-      }
       setBookedRoomsData([]);
     }
   };
+
   useEffect(() => {
     fetchRooms();
     fetchBookedRooms();
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchNotifications();
+    });
+    return unsubscribe;
+  }, [navigation]);
+
+  useEffect(() => {
+    if (user?.user) {
+      setCurrentUser(user.user);
+      console.log('User data updated:', user.user);
+    }
+  }, [user]);
 
   const renderRoomCards = rooms => {
     if (!Array.isArray(rooms)) return null;
@@ -300,7 +384,13 @@ const HomeScreen = () => {
                 <Text style={styles.cardPrice}>
                   {room.price?.toLocaleString('vi-VN')}₫/Ngày
                 </Text>
-                <Text style={styles.cardStatus}>
+                <Text
+                  style={[
+                    styles.cardStatus,
+                    booking.payment_status === 'paid'
+                      ? styles.paidStatus
+                      : styles.unpaidStatus,
+                  ]}>
                   {booking.payment_status === 'paid'
                     ? 'Đã thanh toán'
                     : 'Chưa thanh toán'}
@@ -320,14 +410,6 @@ const HomeScreen = () => {
     if (selectedCategory === 'Xu hướng') return trendingRooms || [];
     return [];
   };
-  useEffect(() => {
-  }, [unreadMessages]);
-  useEffect(() => {
-    if (user?.user) {
-      setCurrentUser(user.user);
-      console.log("User data updated:", user.user); // Debug log
-    }
-  }, [user]);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -381,6 +463,7 @@ const HomeScreen = () => {
           </TouchableOpacity>
         </View>
       </View>
+
       {/* Categories */}
       <View style={styles.categories}>
         {['Gợi ý cho bạn', 'Phổ biến', 'Xu hướng'].map(category => (
@@ -401,6 +484,8 @@ const HomeScreen = () => {
           </TouchableOpacity>
         ))}
       </View>
+
+      {/* Danh sách phòng */}
       <View style={styles.bookingHeader}>
         <Text style={styles.BookingText}>Danh sách phòng</Text>
         <TouchableOpacity onPress={handleViewAllroom}>
@@ -408,9 +493,8 @@ const HomeScreen = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Loading */}
       {loading ? (
-        <ActivityIndicator size="large" color="#0000ff" />
+        <LoadingSkeleton />
       ) : (
         <ScrollView
           horizontal
@@ -428,18 +512,20 @@ const HomeScreen = () => {
             <Text style={styles.viewAllText}>Xem tất cả</Text>
           </TouchableOpacity>
         </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.cardContainer}>
-          {renderBookingCards(bookedRoomsData)}
-        </ScrollView>
+        {loading ? (
+          <LoadingSkeleton />
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.cardContainer}>
+            {renderBookingCards(bookedRoomsData)}
+          </ScrollView>
+        )}
       </View>
     </ScrollView>
   );
 };
-
-export default HomeScreen;
 
 const styles = StyleSheet.create({
   container: {
@@ -586,8 +672,6 @@ const styles = StyleSheet.create({
     width: 25,
     height: 25,
   },
-
-  // Phòng Đặt Trước
   BookingContainer: {
     marginTop: -80,
   },
@@ -616,47 +700,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
-  bookingInfo: {
-    marginTop: 5,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    padding: 8,
-    borderRadius: 8,
-    top: -20,
-  },
-  bookingDate: {
-    fontSize: 14,
-    color: 'white',
-    marginVertical: 2,
-  },
-  bookingStatus: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginTop: 4,
-  },
-  bookingDates: {
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    padding: 8,
-    borderRadius: 8,
-    marginTop: 8,
-    top: -25,
-  },
-  dateText: {
-    color: 'white',
-    fontSize: 12,
-    marginBottom: 4,
-  },
-  cardStatus: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#4A90E2',
-    backgroundColor: 'rgba(74, 144, 226, 0.1)',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 4,
-    alignSelf: 'flex-start',
-    marginTop: 5,
-    top: -25,
-  },
   notificationContainer: {
     position: 'relative',
   },
@@ -677,4 +720,43 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     paddingHorizontal: 4,
   },
+
+  skeletonImage: {
+    width: '100%',
+    height: 300,
+    backgroundColor: '#E1E9EE',
+    borderRadius: 20,
+  },
+  skeletonText: {
+    backgroundColor: '#E1E9EE',
+    borderRadius: 4,
+    marginVertical: 5,
+  },
+  cardStatus: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+    marginTop: 5,
+    top: -25,
+  },
+  paidStatus: {
+    backgroundColor: '#E8F5E9',
+    color: '#2E7D32',
+    borderWidth: 1,
+    borderColor: '#2E7D32',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 5,
+  },
+  unpaidStatus: {
+    backgroundColor: '#FFEBEE',
+    color: '#D32F2F',
+    borderWidth: 1,
+    borderColor: '#D32F2F',
+  },
 });
+
+export default HomeScreen;

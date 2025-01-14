@@ -43,7 +43,6 @@ const Chat = () => {
 
       if (messagesToSave.length > 0) {
         await AsyncStorage.setItem(storageKey, JSON.stringify(messagesToSave));
-        console.log('Saved messages:', messagesToSave.length);
       }
     } catch (error) {
       console.error('Error saving messages:', error);
@@ -54,19 +53,16 @@ const Chat = () => {
     try {
       const storageKey = getStorageKey();
       if (!storageKey) {
-        console.log('Cannot load: Invalid storage key');
         return [];
       }
 
       const storedMessages = await AsyncStorage.getItem(storageKey);
       if (!storedMessages) {
-        console.log('No stored messages found');
         return [];
       }
 
       const parsedMessages = JSON.parse(storedMessages);
       if (!Array.isArray(parsedMessages)) {
-        console.log('Stored data is not an array');
         return [];
       }
 
@@ -88,14 +84,13 @@ const Chat = () => {
       await AsyncStorage.removeItem(getStorageKey());
       
       const response = await api.get(`/messages/${adminId}`);
-      console.log('API Response:', response.data); // Thêm log này để kiểm tra
+
       
       if (response.data.success) {
         const apiMessages = response.data.messages || [];
         
         // Kiểm tra cấu trúc của mỗi tin nhắn
         const validMessages = apiMessages.map(msg => {
-          console.log('Message structure:', msg); // Thêm log để kiểm tra từng tin nhắn
           return {
             _id: msg._id,
             content: msg.content,
@@ -144,7 +139,7 @@ const Chat = () => {
   };
 
   const initializeSocket = (chatRoomId) => {
-    socketRef.current = io('http://192.168.100.101:5000', {
+    socketRef.current = io('https://backendbookingapp-2fav.onrender.com', {
       transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: 5,

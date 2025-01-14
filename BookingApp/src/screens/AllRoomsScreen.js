@@ -35,7 +35,6 @@ const AllRoomsScreen = () => {
       if (Array.isArray(data)) {
         setAllRooms(data);
       } else {
-        console.error('API /rooms response is not an array:', data);
         setAllRooms([]);
       }
     } catch (error) {
@@ -70,7 +69,6 @@ const AllRoomsScreen = () => {
       setFavoriteRooms((prev) => [...prev, roomId]);
       Alert.alert('Thành công', 'Đã thêm phòng vào danh sách yêu thích!');
     } catch (error) {
-      console.log('Error adding favorite:', error);
       Alert.alert('Lỗi', 'Không thể thêm phòng vào danh sách yêu thích.');
     }
   };

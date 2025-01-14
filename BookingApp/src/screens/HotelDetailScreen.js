@@ -32,7 +32,6 @@ export default function HotelDetailScreen({route}) {
   useEffect(() => {
     const fetchRoomDetails = async () => {
       try {
-        console.log('Fetching details for Room ID:', roomId);
         const response = await api.get(`/rooms/${roomId}?populate=services`);
         setHotel(response.data);
       } catch (error) {
@@ -471,6 +470,7 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 16,
     marginBottom: 12,
+    fontWeight: 'bold',
   },
   additionalDescription: {
     fontSize: 14,

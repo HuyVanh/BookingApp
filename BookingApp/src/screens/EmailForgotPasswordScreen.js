@@ -25,13 +25,11 @@ const EmailForgotPassWordScreen = ({ navigation }) => {
 
     setLoading(true);
     try {
-      console.log('Sending OTP request for email:', inputValue); // Debug log
 
       const response = await api.post('/otp/send', {
         email: inputValue
       });
 
-      console.log('OTP response:', response.data); // Debug log
 
       // Kiểm tra message từ response thay vì status
       if (response.data.message) {
@@ -52,7 +50,7 @@ const EmailForgotPassWordScreen = ({ navigation }) => {
         Alert.alert('Thông báo', 'Không thể gửi OTP. Vui lòng thử lại');
       }
     } catch (error) {
-      console.error('Error sending OTP:', error.response?.data); // Debug log
+      console.error('Error sending OTP:', error.response?.data); 
       Alert.alert(
         'Thông báo',
         error.response?.data?.message || 'Đã có lỗi xảy ra. Vui lòng thử lại'

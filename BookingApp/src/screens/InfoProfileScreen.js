@@ -39,15 +39,8 @@ const InfoProfileScreen = ({navigation, route}) => {
   const fetchUserProfile = async () => {
     try {
       const response = await api.get('/auth/profile');
-      console.log('Fetch profile response:', response.data);
-      
-      // Response.data.data.user -> response.data.user
       const userData = response.data.user;
-      
-      // Lưu response data vào state mới
       setUpdatedUserData(userData);
-      
-      // Cập nhật user state với dữ liệu mới
       setUser({
         username: userData.username || '',
         email: userData.email || '',

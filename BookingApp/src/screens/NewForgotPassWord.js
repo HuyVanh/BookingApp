@@ -1,14 +1,23 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, Image, TextInput, TouchableOpacity, Modal, Alert } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import React, {useState} from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  Image,
+  TextInput,
+  TouchableOpacity,
+  Modal,
+  Alert,
+} from 'react-native';
+import {useNavigation, useRoute} from '@react-navigation/native';
 import api from '../services/api';
 import axios from 'axios';
 
 const NewForgotPassWord = () => {
   const route = useRoute();
   const navigation = useNavigation();
-  const { email, resetToken } = route.params || {};
-  
+  const {email, resetToken, username} = route.params || {};
+
   const [isModalVisible, setModalVisible] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -33,7 +42,10 @@ const NewForgotPassWord = () => {
 
   const handlePasswordChange = async () => {
     if (!email || !resetToken) {
-      Alert.alert('Thông báo', 'Thiếu thông tin xác thực. Vui lòng thử lại từ đầu.');
+      Alert.alert(
+        'Thông báo',
+        'Thiếu thông tin xác thực. Vui lòng thử lại từ đầu.',
+      );
       return;
     }
 
@@ -41,7 +53,7 @@ const NewForgotPassWord = () => {
       try {
         console.log('Attempting password reset with:', {
           email,
-          token: resetToken
+          token: resetToken,
         });
 
         const response = await axios({
@@ -49,31 +61,39 @@ const NewForgotPassWord = () => {
           url: `${api.defaults.baseURL}/auth/reset-password`,
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${resetToken}`
+            Authorization: `Bearer ${resetToken}`,
           },
           data: {
             email,
-            newPassword: password
-          }
+            username,
+            newPassword: password,
+          },
         });
 
-        console.log('Reset password response:', response.data);
+        console.log('Full reset password response:', {
+          status: response.status,
+          headers: response.headers,
+          data: response.data
+        });
 
         if (response.data.success) {
           setModalVisible(true);
         } else {
-          setPasswordError(response.data.message || 'Có lỗi khi thay đổi mật khẩu.');
+          setPasswordError(
+            response.data.message || 'Có lỗi khi thay đổi mật khẩu.',
+          );
         }
       } catch (error) {
         console.error('Reset password error:', {
           status: error.response?.status,
           data: error.response?.data,
-          headers: error.response?.headers
+          headers: error.response?.headers,
         });
 
-        const errorMessage = error.response?.data?.message || 
-                           'Lỗi khi thay đổi mật khẩu. Vui lòng thử lại.';
-        
+        const errorMessage =
+          error.response?.data?.message ||
+          'Lỗi khi thay đổi mật khẩu. Vui lòng thử lại.';
+
         if (error.response?.status === 401) {
           Alert.alert(
             'Thông báo',
@@ -81,9 +101,9 @@ const NewForgotPassWord = () => {
             [
               {
                 text: 'OK',
-                onPress: () => navigation.navigate('EmailForgotPassWordScreen')
-              }
-            ]
+                onPress: () => navigation.navigate('EmailForgotPassWordScreen'),
+              },
+            ],
           );
         } else {
           setPasswordError(errorMessage);
@@ -117,16 +137,21 @@ const NewForgotPassWord = () => {
           value={password}
           onChangeText={setPassword}
         />
-        <TouchableOpacity onPress={() => setIsPasswordVisible(!isPasswordVisible)}>
+        <TouchableOpacity
+          onPress={() => setIsPasswordVisible(!isPasswordVisible)}>
           <Image
-            source={isPasswordVisible ? require('../assets/eyeOpen.png') : require('../assets/eyeClosed.png')}
+            source={
+              isPasswordVisible
+                ? require('../assets/eyeOpen.png')
+                : require('../assets/eyeClosed.png')
+            }
             style={styles.eyeIcon}
           />
         </TouchableOpacity>
       </View>
 
       {/* Xác nhận mật khẩu */}
-      <View style={[styles.inputContainer, { marginBottom: 20 }]}>
+      <View style={[styles.inputContainer, {marginBottom: 20}]}>
         <Image source={require('../assets/lock2.png')} style={styles.icon} />
         <TextInput
           style={[styles.input, passwordError1 ? styles.inputError : null]}
@@ -136,9 +161,14 @@ const NewForgotPassWord = () => {
           value={confirmPassword}
           onChangeText={setConfirmPassword}
         />
-        <TouchableOpacity onPress={() => setIsPasswordVisible1(!isPasswordVisible1)}>
+        <TouchableOpacity
+          onPress={() => setIsPasswordVisible1(!isPasswordVisible1)}>
           <Image
-            source={isPasswordVisible1 ? require('../assets/eyeOpen.png') : require('../assets/eyeClosed.png')}
+            source={
+              isPasswordVisible1
+                ? require('../assets/eyeOpen.png')
+                : require('../assets/eyeClosed.png')
+            }
             style={styles.eyeIcon}
           />
         </TouchableOpacity>
@@ -156,22 +186,31 @@ const NewForgotPassWord = () => {
       </View>
 
       {/* Modal thành công */}
-      <Modal 
-        transparent 
-        visible={isModalVisible} 
+      <Modal
+        transparent
+        visible={isModalVisible}
         animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
-      >
+        onRequestClose={() => setModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.imageContainerModal}>
-              <Image source={require('../assets/tron.png')} style={styles.modalImage} />
-              <Image source={require('../assets/tick.png')} style={styles.modalImage1} />
+              <Image
+                source={require('../assets/tron.png')}
+                style={styles.modalImage}
+              />
+              <Image
+                source={require('../assets/tick.png')}
+                style={styles.modalImage1}
+              />
             </View>
             <Text style={styles.modalText}>Xin chúc mừng!</Text>
             <Text style={styles.modalText1}>Tài khoản của bạn đã sẵn sàng</Text>
-            <TouchableOpacity style={styles.modalButton} onPress={navigateToLogin}>
-              <Text style={styles.modalButtonText}>Đi tới màn hình đăng nhập</Text>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={navigateToLogin}>
+              <Text style={styles.modalButtonText}>
+                Đi tới màn hình đăng nhập
+              </Text>
             </TouchableOpacity>
           </View>
         </View>

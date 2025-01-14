@@ -63,6 +63,13 @@ const Payment = () => {
   const handleSelect = method => {
     setSelectedMethod(method);
   };
+  const calculateDays = (checkIn, checkOut) => {
+    const startDate = new Date(checkIn);
+    const endDate = new Date(checkOut);
+    const diffTime = Math.abs(endDate - startDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
 
   // Hàm xử lý thanh toán qua Stripe
   const handleStripePayment = async (bookingId, paymentMethodId) => {
@@ -144,10 +151,22 @@ const Payment = () => {
   };
 
   const handleNext = async () => {
-    console.log('BookingData:', bookingData);
-    console.log('BookingData Room:', bookingData.room_name);
     if (!selectedMethod) {
       Alert.alert('Thông báo', 'Vui lòng chọn phương thức thanh toán');
+      return;
+    }
+    const numberOfDays = calculateDays(bookingData.check_in, bookingData.check_out);
+    if (numberOfDays > 5 && selectedMethod.method_type !== 'Stripe') {
+      Alert.alert(
+        'Thông báo',
+        'Vì bạn đặt phòng trên 5 ngày, vui lòng liên hệ admin để đặt cọc hoặc chọn phương thức thanh toán qua thẻ.',
+        [
+          {
+            text: 'OK',
+            onPress: () => console.log('Alert closed')
+          }
+        ]
+      );
       return;
     }
 

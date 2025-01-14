@@ -181,7 +181,6 @@ export default function WriteReview() {
   );
 }
 
-// --------------------------- STYLES ---------------------------
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,

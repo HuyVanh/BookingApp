@@ -51,7 +51,7 @@ const RegisterScreen = ({navigation}) => {
     if (validateInputs()) {
       try {
         const response = await axios.post(
-          'http://192.168.100.101:5000/api/auth/register',
+          'https://backendbookingapp-2fav.onrender.com/api/auth/register',
           {
             username,
             fullName: fullName,

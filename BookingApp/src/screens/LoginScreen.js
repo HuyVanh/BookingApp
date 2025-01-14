@@ -13,15 +13,16 @@ import {AuthContext} from '../contexts/AuthContext';
 
 const LoginScreen = ({navigation}) => {
   const {login} = useContext(AuthContext);
-  const [username, setUsername] = useState(''); // Đổi từ email thành username
+  const [username, setUsername] = useState(''); 
   const [password, setPassword] = useState('');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
-  const [usernameError, setUsernameError] = useState(''); // Đổi từ emailError thành usernameError
+  const [usernameError, setUsernameError] = useState('');
   const [passwordError, setPasswordError] = useState('');
+
 
   const handleLogin = async () => {
     let valid = true;
-
+  
     if (username.trim() === '') {
       setUsernameError('Không để trống');
       valid = false;
@@ -32,7 +33,7 @@ const LoginScreen = ({navigation}) => {
     if (password.trim() === '') {
       setPasswordError('Không để trống');
       valid = false;
-    } else if (password.length < 4) { // Vì mật khẩu mẫu có 4 ký tự
+    } else if (password.length < 4) {
       setPasswordError('Mật khẩu phải có ít nhất 4 ký tự');
       valid = false;
     } else {
@@ -42,12 +43,38 @@ const LoginScreen = ({navigation}) => {
     if (valid) {
       try {
         await login(username, password);
+        console.log("Login successful, user data:", username);
         navigation.replace('Home');
       } catch (error) {
+        let errorMessage = 'Đã có lỗi xảy ra';
+  
+        // Kiểm tra response từ server
+        if (error.response) {
+          const status = error.response.status;
+          const message = error.response.data?.message;
+  
+          if (status === 401) {
+            errorMessage = 'Tên đăng nhập hoặc mật khẩu không chính xác';
+          } else if (status === 403 && message === 'Tài khoản đã bị vô hiệu hóa') {
+            errorMessage = 'Tài khoản của bạn đã bị vô hiệu hóa';
+          } else if (message) {
+            errorMessage = message;
+          }
+        }
+  
         Alert.alert(
           'Đăng nhập thất bại',
-          'Thông tin đăng nhập không chính xác!',
+          errorMessage,
+          [
+            {
+              text: 'Đóng',
+              style: 'cancel',
+            }
+          ]
         );
+  
+        // Reset mật khẩu field sau khi đăng nhập thất bại
+        setPassword('');
       }
     }
   };
