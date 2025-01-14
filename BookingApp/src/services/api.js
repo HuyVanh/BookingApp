@@ -7,6 +7,7 @@ const API_BASE_URL = 'http://192.168.100.101:5000/api';
 const api = axios.create({
   baseURL: API_BASE_URL,
 });
+console.log('API Base URL:', api.defaults.baseURL);
 
 // Thêm interceptor cho requests
 api.interceptors.request.use(

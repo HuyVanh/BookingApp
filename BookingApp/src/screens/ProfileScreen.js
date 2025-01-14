@@ -1,24 +1,30 @@
-import { 
-  StyleSheet, 
-  Text, 
-  TouchableOpacity, 
-  View, 
-  Image, 
-  Modal, 
-  TouchableWithoutFeedback, 
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  Image,
+  Modal,
+  TouchableWithoutFeedback,
   ActivityIndicator,
   TextInput,
-  Alert
+  Alert,
+  PermissionsAndroid, // Thêm dòng này
+  Platform, // Thêm dòng này
 } from 'react-native';
-import React, { useEffect, useState, useContext } from 'react';
+import React, {useEffect, useState, useContext} from 'react';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { AuthContext } from '../contexts/AuthContext';
+import {AuthContext} from '../contexts/AuthContext';
 import api from '../services/api';
+import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
 
-const ProfileScreen = ({ navigation }) => {
-  const { logout } = useContext(AuthContext);
+const ProfileScreen = ({navigation}) => {
+  const {logout} = useContext(AuthContext);
   const [modalVisible, setModalVisible] = useState(false);
-  const [changePasswordModalVisible, setChangePasswordModalVisible] = useState(false);
+  const [changePasswordModalVisible, setChangePasswordModalVisible] =
+    useState(false);
+  const [changeAvatarModalVisible, setChangeAvatarModalVisible] =
+    useState(false);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -31,10 +37,33 @@ const ProfileScreen = ({ navigation }) => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  const requestCameraPermission = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.CAMERA,
+          {
+            title: 'Yêu cầu quyền truy cập Camera',
+            message: 'Ứng dụng cần quyền truy cập camera để chụp ảnh đại diện',
+            buttonNeutral: 'Hỏi lại sau',
+            buttonNegative: 'Từ chối',
+            buttonPositive: 'Đồng ý',
+          },
+        );
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      } catch (err) {
+        console.warn(err);
+        return false;
+      }
+    }
+    return true;
+  };
+
   const fetchUserProfile = async () => {
     try {
       setLoading(true);
       const response = await api.get('/auth/me');
+      console.log('User profile data:', response.data);
       setUserData(response.data);
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -62,29 +91,104 @@ const ProfileScreen = ({ navigation }) => {
     }
   };
 
+  const pickImage = async (type) => {
+    try {
+      if (type === 'camera') {
+        const hasCameraPermission = await requestCameraPermission();
+        if (!hasCameraPermission) {
+          Alert.alert('Thông báo', 'Bạn cần cấp quyền truy cập camera để sử dụng tính năng này');
+          return;
+        }
+      }
+  
+      const options = {
+        mediaType: 'photo',
+        quality: 1,
+        maxWidth: 500,
+        maxHeight: 500,
+      };
+  
+      const result = type === 'camera' 
+        ? await launchCamera(options)
+        : await launchImageLibrary(options);
+  
+      console.log('Image picker result:', result);
+  
+      if (result.didCancel) {
+        console.log('User cancelled image picker');
+        return;
+      }
+  
+      if (result.errorCode) {
+        console.log('ImagePicker Error:', result.errorMessage);
+        Alert.alert('Lỗi', result.errorMessage);
+        return;
+      }
+  
+      if (result.assets && result.assets[0]) {
+      const formData = new FormData();
+      const imageFile = {
+        uri: Platform.OS === 'android' ? result.assets[0].uri : result.assets[0].uri.replace('file://', ''),
+        type: 'image/jpeg',
+        name: result.assets[0].fileName || 'avatar.jpg'
+      };
+      
+      console.log('Image file details:', imageFile);
+      formData.append('avatar', imageFile);
+
+      try {
+        const response = await api.put('/user/update-avatar', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+          transformRequest: formData => formData,
+          onUploadProgress: (progressEvent) => {
+            console.log('Upload Progress:', progressEvent.loaded / progressEvent.total);
+          },
+        });
+        console.log('Upload response:', response);
+
+        if (response.data?.success) {
+          await fetchUserProfile();
+          Alert.alert('Thành công', 'Cập nhật ảnh đại diện thành công');
+          setChangeAvatarModalVisible(false);
+        }
+      } catch (error) {
+        console.error('Upload error details:', {
+          message: error.message,
+          code: error.code,
+          response: error.response,
+          config: error.config
+        });
+        Alert.alert('Lỗi', 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng');
+      }
+    }
+  } catch (error) {
+    console.error('Error in pickImage:', error);
+    Alert.alert('Lỗi', 'Có lỗi xảy ra khi xử lý ảnh');
+  }
+  };
+
   const handleChangePassword = async () => {
     try {
-      console.log('Sending password change request:', {
-        oldPassword,
-        newPassword
-      });
-  
+      if (newPassword !== confirmPassword) {
+        setPasswordError('Mật khẩu mới không khớp');
+        return;
+      }
+
       const response = await api.put('/auth/change-password', {
         oldPassword,
-        newPassword
+        newPassword,
       });
-  
-      console.log('Password change response:', response.data);
-  
+
       if (response.data.success) {
         Alert.alert('Thành công', 'Đổi mật khẩu thành công');
         setChangePasswordModalVisible(false);
         resetPasswordForm();
       }
     } catch (error) {
-      console.error('Password change error:', error.response?.data);
       setPasswordError(
-        error.response?.data?.message || 'Có lỗi xảy ra khi đổi mật khẩu'
+        error.response?.data?.message || 'Có lỗi xảy ra khi đổi mật khẩu',
       );
     }
   };
@@ -109,6 +213,7 @@ const ProfileScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
         <Image
           source={require('../assets/IconLogo.png')}
@@ -120,18 +225,34 @@ const ProfileScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
+      {/* Profile Card */}
       <View style={styles.card}>
         <View style={styles.profileInfo}>
           <Image
             source={
-              userData?.avatar 
-                ? { uri: userData.avatar }
+              userData?.user?.avatar
+                ? {uri: `${api.defaults.baseURL}${userData.user.avatar}`}
                 : require('../assets/onboard1.png')
             }
             style={styles.avatar}
+            defaultSource={require('../assets/onboard1.png')}
+            onError={error => {
+              console.log('Error loading image:', error.nativeEvent.error);
+            }}
+            onLoad={() => {
+              console.log('Image loaded successfully');
+            }}
           />
+          <TouchableOpacity
+            style={styles.changeAvatarButton}
+            onPress={() => setChangeAvatarModalVisible(true)}>
+            <Icon name="camera-outline" size={20} color="white" />
+            <Text style={styles.changeAvatarText}>Thay đổi ảnh</Text>
+          </TouchableOpacity>
           <View style={styles.textContainer}>
-            <Text style={styles.name}>{userData?.user?.username || 'Tên người dùng'}</Text>
+            <Text style={styles.name}>
+              {userData?.user?.username || 'Tên người dùng'}
+            </Text>
             <Text style={styles.email}>{userData?.user?.email || 'Email'}</Text>
             {userData?.phone && (
               <Text style={styles.phone}>{userData.phone}</Text>
@@ -140,72 +261,71 @@ const ProfileScreen = ({ navigation }) => {
         </View>
       </View>
 
+      {/* Function Card */}
       <View style={styles.card}>
         <View style={styles.functionContainer}>
-          <TouchableOpacity 
-            style={styles.functionButton} 
-            activeOpacity={0.7} 
-            onPress={() => navigation.navigate('InfoProfile', { userData: userData })} 
-          >
+          <TouchableOpacity
+            style={styles.functionButton}
+            activeOpacity={0.7}
+            onPress={() =>
+              navigation.navigate('InfoProfile', {userData: userData})
+            }>
             <Icon name="person-outline" size={24} color="black" />
             <Text style={styles.functionText}>Chỉnh sửa thông tin cá nhân</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={styles.functionButton} 
-            activeOpacity={0.7} 
-            onPress={() => setChangePasswordModalVisible(true)}
-          >
+          <TouchableOpacity
+            style={styles.functionButton}
+            activeOpacity={0.7}
+            onPress={() => setChangePasswordModalVisible(true)}>
             <Icon name="lock-closed-outline" size={24} color="black" />
             <Text style={styles.functionText}>Đổi mật khẩu</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={styles.functionButton} 
-            activeOpacity={0.7} 
-            onPress={() => setModalVisible(true)}
-          >
+          <TouchableOpacity
+            style={styles.functionButton}
+            activeOpacity={0.7}
+            onPress={() => setModalVisible(true)}>
             <Icon name="log-out-outline" size={24} color="black" />
-            <Text style={[styles.functionText, styles.logoutText]}>Đăng xuất</Text>
+            <Text style={[styles.functionText, styles.logoutText]}>
+              Đăng xuất
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Modal Đăng xuất */}
+      {/* Logout Modal */}
       <Modal
         transparent={true}
         visible={modalVisible}
         animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
-      >
+        onRequestClose={() => setModalVisible(false)}>
         <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
           <View style={styles.overlay} />
         </TouchableWithoutFeedback>
         <View style={styles.modalContainer}>
           <Text style={styles.modalTitle}>Đăng xuất</Text>
-          <Text style={styles.modalMessage}>Bạn có chắc chắn muốn đăng xuất không?</Text>
-          
+          <Text style={styles.modalMessage}>
+            Bạn có chắc chắn muốn đăng xuất không?
+          </Text>
+
           <View style={styles.modalButtons}>
-            <TouchableOpacity 
-              style={styles.modalButton} 
-              onPress={handleLogout}
-            >
+            <TouchableOpacity style={styles.modalButton} onPress={handleLogout}>
               <Text style={styles.modalButtonText}>Đăng xuất</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.modalButtons}>
-            <TouchableOpacity 
-              style={styles.modalButton1} 
-              onPress={() => setModalVisible(false)}
-            >
+            <TouchableOpacity
+              style={styles.modalButton1}
+              onPress={() => setModalVisible(false)}>
               <Text style={styles.modalButtonText1}>Hủy</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
 
-      {/* Modal Đổi mật khẩu */}
+      {/* Change Password Modal */}
       <Modal
         transparent={true}
         visible={changePasswordModalVisible}
@@ -213,19 +333,17 @@ const ProfileScreen = ({ navigation }) => {
         onRequestClose={() => {
           setChangePasswordModalVisible(false);
           resetPasswordForm();
-        }}
-      >
-        <TouchableWithoutFeedback 
+        }}>
+        <TouchableWithoutFeedback
           onPress={() => {
             setChangePasswordModalVisible(false);
             resetPasswordForm();
-          }}
-        >
+          }}>
           <View style={styles.overlay} />
         </TouchableWithoutFeedback>
         <View style={[styles.modalContainer, styles.changePasswordModal]}>
           <Text style={styles.modalTitle}>Đổi mật khẩu</Text>
-          
+
           {passwordError ? (
             <Text style={styles.errorText}>{passwordError}</Text>
           ) : null}
@@ -238,14 +356,13 @@ const ProfileScreen = ({ navigation }) => {
               value={oldPassword}
               onChangeText={setOldPassword}
             />
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.eyeIcon}
-              onPress={() => setShowOldPassword(!showOldPassword)}
-            >
-              <Icon 
-                name={showOldPassword ? "eye-outline" : "eye-off-outline"} 
-                size={24} 
-                color="black" 
+              onPress={() => setShowOldPassword(!showOldPassword)}>
+              <Icon
+                name={showOldPassword ? 'eye-outline' : 'eye-off-outline'}
+                size={24}
+                color="black"
               />
             </TouchableOpacity>
           </View>
@@ -258,14 +375,13 @@ const ProfileScreen = ({ navigation }) => {
               value={newPassword}
               onChangeText={setNewPassword}
             />
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.eyeIcon}
-              onPress={() => setShowNewPassword(!showNewPassword)}
-            >
-              <Icon 
-                name={showNewPassword ? "eye-outline" : "eye-off-outline"} 
-                size={24} 
-                color="black" 
+              onPress={() => setShowNewPassword(!showNewPassword)}>
+              <Icon
+                name={showNewPassword ? 'eye-outline' : 'eye-off-outline'}
+                size={24}
+                color="black"
               />
             </TouchableOpacity>
           </View>
@@ -278,38 +394,68 @@ const ProfileScreen = ({ navigation }) => {
               value={confirmPassword}
               onChangeText={setConfirmPassword}
             />
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.eyeIcon}
-              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-            >
-              <Icon 
-                name={showConfirmPassword ? "eye-outline" : "eye-off-outline"} 
-                size={24} 
-                color="black" 
+              onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+              <Icon
+                name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
+                size={24}
+                color="black"
               />
             </TouchableOpacity>
           </View>
 
           <View style={styles.modalButtons}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.modalButton}
-              onPress={handleChangePassword}
-            >
+              onPress={handleChangePassword}>
               <Text style={styles.modalButtonText}>Xác nhận</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.modalButtons}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.modalButton1}
               onPress={() => {
                 setChangePasswordModalVisible(false);
                 resetPasswordForm();
-              }}
-            >
+              }}>
               <Text style={styles.modalButtonText1}>Hủy</Text>
             </TouchableOpacity>
           </View>
+        </View>
+      </Modal>
+
+      {/* Change Avatar Modal */}
+      <Modal
+        transparent={true}
+        visible={changeAvatarModalVisible}
+        animationType="slide"
+        onRequestClose={() => setChangeAvatarModalVisible(false)}>
+        <TouchableWithoutFeedback
+          onPress={() => setChangeAvatarModalVisible(false)}>
+          <View style={styles.overlay} />
+        </TouchableWithoutFeedback>
+        <View style={[styles.modalContainer, styles.avatarModal]}>
+          <Text style={styles.modalTitle}>Thay đổi ảnh đại diện</Text>
+
+          <TouchableOpacity
+            style={styles.modalButton}
+            onPress={() => pickImage('library')}>
+            <Text style={styles.modalButtonText}>Chọn từ thư viện</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.modalButton}
+            onPress={() => pickImage('camera')}>
+            <Text style={styles.modalButtonText}>Chụp ảnh mới</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.modalButton1}
+            onPress={() => setChangeAvatarModalVisible(false)}>
+            <Text style={styles.modalButtonText1}>Hủy</Text>
+          </TouchableOpacity>
         </View>
       </Modal>
     </View>
@@ -344,6 +490,14 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     padding: 20,
     marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
   },
   profileInfo: {
     alignItems: 'center',
@@ -352,7 +506,9 @@ const styles = StyleSheet.create({
   avatar: {
     width: 150,
     height: 150,
-    borderRadius: 80,
+    borderRadius: 75,
+    backgroundColor: '#f4f4f4',
+    resizeMode: 'cover',
   },
   textContainer: {
     justifyContent: 'center',
@@ -391,32 +547,36 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'flex-end',
   },
   modalContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     backgroundColor: 'white',
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
     padding: 20,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
     alignItems: 'center',
-  },
-  changePasswordModal: {
-    minHeight: 400,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -4,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
   modalTitle: {
-    fontSize: 20,
-    color: '#C70D0D',
+    fontSize: 22,
+    color: '#000',
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 20,
+  },
+  changePasswordModal: {
+    paddingBottom: 30,
   },
   modalMessage: {
-    fontSize: 20,
+    fontSize: 18,
     color: 'black',
-    fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -424,27 +584,46 @@ const styles = StyleSheet.create({
     width: '100%',
     marginVertical: 5,
   },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonIcon: {
+    marginRight: 10,
+  },
   modalButton: {
     backgroundColor: '#4A7DFF',
-    borderRadius: 30,
-    padding: 15,
-    marginHorizontal: 5,
+    borderRadius: 12,
+    padding: 16,
+    width: '100%',
     alignItems: 'center',
+    marginVertical: 6,
+    shadowColor: '#4A7DFF',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   modalButton1: {
-    backgroundColor: '#E2E2E2',
-    borderRadius: 30,
-    padding: 15,
-    marginTop: 15,
-    marginHorizontal: 5,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    padding: 16,
+    width: '100%',
     alignItems: 'center',
+    marginTop: 8,
   },
   modalButtonText: {
     color: 'white',
+    fontSize: 16,
     fontWeight: 'bold',
   },
   modalButtonText1: {
     color: '#4A7DFF',
+    fontSize: 16,
     fontWeight: 'bold',
   },
   loadingContainer: {
@@ -464,10 +643,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 15,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f8f8f8',
     borderWidth: 1,
-    borderColor: '#cccccc',
-    borderRadius: 15,
+    borderColor: '#e0e0e0',
+    borderRadius: 12,
+    paddingHorizontal: 15,
   },
   passwordInput: {
     flex: 1,
@@ -481,7 +661,30 @@ const styles = StyleSheet.create({
     color: 'red',
     marginBottom: 10,
     textAlign: 'center',
-  }
+  },
+  changeAvatarButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#4A7DFF',
+    padding: 10,
+    borderRadius: 20,
+    marginTop: 10,
+  },
+  changeAvatarText: {
+    color: 'white',
+    marginLeft: 5,
+    fontWeight: 'bold',
+  },
+  avatarModal: {
+    paddingHorizontal: 20,
+    paddingBottom: 30,
+  },
+  modalDivider: {
+    height: 1,
+    backgroundColor: '#E0E0E0',
+    width: '100%',
+    marginVertical: 15,
+  },
 });
 
 export default ProfileScreen;

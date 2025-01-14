@@ -6,9 +6,7 @@ import {
   StyleSheet,
   Image,
   TouchableOpacity,
-  ActivityIndicator,
   Animated,
-  Dimensions,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import api from '../services/api';

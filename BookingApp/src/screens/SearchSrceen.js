@@ -56,7 +56,6 @@ useEffect(() => {
         room.address?.toLowerCase().includes(searchLower)
       );
     });
-    console.log('Search results:', results.length);
     setSearchResults(results);
     setSelectedCategory('Tất cả');
   } else {
