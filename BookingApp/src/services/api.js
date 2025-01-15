@@ -2,7 +2,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = 'http://192.168.100.101:5000/api';
+const API_BASE_URL = 'https://backendbookingapp-2fav.onrender.com/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,

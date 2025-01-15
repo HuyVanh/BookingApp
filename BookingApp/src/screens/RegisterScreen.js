@@ -9,7 +9,6 @@ import {
   StyleSheet,
   Image,
   Modal,
-  Alert,
 } from 'react-native';
 import axios from 'axios';
 

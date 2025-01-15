@@ -9,8 +9,8 @@ import {
   ActivityIndicator,
   TextInput,
   Alert,
-  PermissionsAndroid, // Thêm dòng này
-  Platform, // Thêm dòng này
+  PermissionsAndroid,
+  Platform,
 } from 'react-native';
 import React, {useEffect, useState, useContext} from 'react';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -36,6 +36,8 @@ const ProfileScreen = ({navigation}) => {
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  // Thêm state này vào đầu component
+const [avatarLoading, setAvatarLoading] = useState(false);
 
   const requestCameraPermission = async () => {
     if (Platform.OS === 'android') {
@@ -63,10 +65,14 @@ const ProfileScreen = ({navigation}) => {
     try {
       setLoading(true);
       const response = await api.get('/auth/me');
-      console.log('User profile data:', response.data);
+      console.log('Profile response:', {
+        status: response.status,
+        data: response.data,
+        avatar: response.data?.user?.avatar
+      });
       setUserData(response.data);
     } catch (error) {
-      console.error('Error fetching user profile:', error);
+      console.error('Error fetching profile:', error);
     } finally {
       setLoading(false);
     }
@@ -90,13 +96,29 @@ const ProfileScreen = ({navigation}) => {
       console.error('Logout error:', error);
     }
   };
+  const getAvatarSource = (avatarUrl) => {
+    console.log('Getting avatar source for URL:', avatarUrl);
+    
+    if (!avatarUrl) {
+      return require('../assets/onboard1.png');
+    }
+  
+    if (avatarUrl.includes('cloudinary.com')) {
+      return { uri: avatarUrl };
+    }
+  
+    return require('../assets/onboard1.png');
+  };
 
   const pickImage = async (type) => {
     try {
       if (type === 'camera') {
         const hasCameraPermission = await requestCameraPermission();
         if (!hasCameraPermission) {
-          Alert.alert('Thông báo', 'Bạn cần cấp quyền truy cập camera để sử dụng tính năng này');
+          Alert.alert(
+            'Thông báo',
+            'Bạn cần cấp quyền truy cập camera để sử dụng tính năng này'
+          );
           return;
         }
       }
@@ -108,65 +130,62 @@ const ProfileScreen = ({navigation}) => {
         maxHeight: 500,
       };
   
-      const result = type === 'camera' 
+      const result = type === 'camera'
         ? await launchCamera(options)
         : await launchImageLibrary(options);
   
-      console.log('Image picker result:', result);
-  
       if (result.didCancel) {
-        console.log('User cancelled image picker');
         return;
       }
   
       if (result.errorCode) {
-        console.log('ImagePicker Error:', result.errorMessage);
         Alert.alert('Lỗi', result.errorMessage);
         return;
       }
   
       if (result.assets && result.assets[0]) {
-      const formData = new FormData();
-      const imageFile = {
-        uri: Platform.OS === 'android' ? result.assets[0].uri : result.assets[0].uri.replace('file://', ''),
-        type: 'image/jpeg',
-        name: result.assets[0].fileName || 'avatar.jpg'
-      };
-      
-      console.log('Image file details:', imageFile);
-      formData.append('avatar', imageFile);
-
-      try {
-        const response = await api.put('/user/update-avatar', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-          transformRequest: formData => formData,
-          onUploadProgress: (progressEvent) => {
-            console.log('Upload Progress:', progressEvent.loaded / progressEvent.total);
-          },
-        });
-        console.log('Upload response:', response);
-
-        if (response.data?.success) {
-          await fetchUserProfile();
-          Alert.alert('Thành công', 'Cập nhật ảnh đại diện thành công');
-          setChangeAvatarModalVisible(false);
+        setLoading(true);
+        const formData = new FormData();
+        const imageFile = {
+          uri: Platform.OS === 'android' 
+            ? result.assets[0].uri 
+            : result.assets[0].uri.replace('file://', ''),
+          type: result.assets[0].type || 'image/jpeg',
+          name: result.assets[0].fileName || `avatar-${Date.now()}.jpg`,
+        };
+  
+        formData.append('avatar', imageFile);
+  
+        try {
+          // Đảm bảo gọi đúng endpoint
+          const response = await api.put('/user/update-avatar', formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+            transformRequest: formData => formData,
+          });
+  
+          console.log('Upload response:', response.data);
+  
+          if (response.data?.success) {
+            await fetchUserProfile();
+            Alert.alert('Thành công', 'Cập nhật ảnh đại diện thành công');
+            setChangeAvatarModalVisible(false);
+          }
+        } catch (error) {
+          console.error('Upload error:', error.response?.data || error);
+          Alert.alert(
+            'Lỗi',
+            error.response?.data?.message || 'Không thể cập nhật ảnh đại diện'
+          );
+        } finally {
+          setLoading(false);
         }
-      } catch (error) {
-        console.error('Upload error details:', {
-          message: error.message,
-          code: error.code,
-          response: error.response,
-          config: error.config
-        });
-        Alert.alert('Lỗi', 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng');
       }
+    } catch (error) {
+      console.error('Error in pickImage:', error);
+      Alert.alert('Lỗi', 'Có lỗi xảy ra khi xử lý ảnh');
     }
-  } catch (error) {
-    console.error('Error in pickImage:', error);
-    Alert.alert('Lỗi', 'Có lỗi xảy ra khi xử lý ảnh');
-  }
   };
 
   const handleChangePassword = async () => {
@@ -228,21 +247,17 @@ const ProfileScreen = ({navigation}) => {
       {/* Profile Card */}
       <View style={styles.card}>
         <View style={styles.profileInfo}>
-          <Image
-            source={
-              userData?.user?.avatar
-                ? {uri: `${api.defaults.baseURL}${userData.user.avatar}`}
-                : require('../assets/onboard1.png')
-            }
-            style={styles.avatar}
-            defaultSource={require('../assets/onboard1.png')}
-            onError={error => {
-              console.log('Error loading image:', error.nativeEvent.error);
-            }}
-            onLoad={() => {
-              console.log('Image loaded successfully');
-            }}
-          />
+        <Image
+  source={getAvatarSource(userData?.user?.avatar)}
+  style={styles.avatar}
+  defaultSource={require('../assets/onboard1.png')}
+  onLoadStart={() => setAvatarLoading(true)}
+  onLoadEnd={() => setAvatarLoading(false)}
+  onError={(error) => {
+    console.log('Error loading avatar:', error.nativeEvent.error);
+    setAvatarLoading(false);
+  }}
+/>
           <TouchableOpacity
             style={styles.changeAvatarButton}
             onPress={() => setChangeAvatarModalVisible(true)}>
@@ -509,6 +524,9 @@ const styles = StyleSheet.create({
     borderRadius: 75,
     backgroundColor: '#f4f4f4',
     resizeMode: 'cover',
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+
   },
   textContainer: {
     justifyContent: 'center',

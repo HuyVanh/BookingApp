@@ -1,6 +1,6 @@
 // src/navigation/NavigationContainer.js
 import React, { useContext } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, ActivityIndicator  } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NotificationProvider } from '../navigation/NotificationContext';
@@ -209,10 +209,12 @@ const AppStackScreen = () => (
 
 const Navigation = () => {
   const { user, loading } = useContext(AuthContext);
-
   if (loading) {
-   
-    return null;
+    return (
+      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+        <ActivityIndicator size="large" color="#007BFF" />
+      </View>
+    );
   }
 
   return (

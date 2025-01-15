@@ -9,24 +9,28 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import {useNavigation, useRoute, useFocusEffect} from '@react-navigation/native';
+import {
+  useNavigation,
+  useRoute,
+  useFocusEffect,
+} from '@react-navigation/native';
 import api from '../services/api';
 
 export default function ReviewScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { roomId } = route.params;
+  const {roomId} = route.params;
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedRating, setSelectedRating] = useState(null);
 
   useEffect(() => {
     fetchReviews();
-  }, [fetchReviews,roomId]);
+  }, [fetchReviews, roomId]);
   useFocusEffect(
     useCallback(() => {
       fetchReviews();
-    }, [fetchReviews])
+    }, [fetchReviews]),
   );
   const fetchReviews = useCallback(async () => {
     try {
@@ -37,12 +41,11 @@ export default function ReviewScreen() {
     } finally {
       setLoading(false);
     }
-  }, [roomId])
+  }, [roomId]);
 
   const filterReviews = rating => {
     setSelectedRating(rating);
   };
-  
 
   const filteredReviews =
     selectedRating !== null
@@ -54,42 +57,65 @@ export default function ReviewScreen() {
     const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
     return (totalRating / reviews.length).toFixed(1);
   };
+  const getAvatarSource = avatarUrl => {
+    if (!avatarUrl) {
+      return require('../assets/user.png');
+    }
+
+    // Nếu là URL Cloudinary
+    if (avatarUrl.includes('cloudinary.com')) {
+      return {uri: avatarUrl};
+    }
+
+    // Nếu là URL tương đối (bắt đầu bằng '/uploads')
+    if (avatarUrl.startsWith('/uploads')) {
+      return {
+        uri: `https://backendbookingapp-2fav.onrender.com${avatarUrl}`,
+      };
+    }
+
+    // Nếu là URL đầy đủ
+    if (avatarUrl.startsWith('http')) {
+      return {uri: avatarUrl};
+    }
+
+    return require('../assets/user.png');
+  };
 
   const renderItem = ({item}) => {
     return (
       <View style={styles.reviewCard}>
-      <View style={styles.avatarContainer}>
-        <Image
-          source={
-            item.user?.avatar 
-              ? { uri: `${api.defaults.baseURL}${item.user.avatar}` }  // Thêm baseURL
-              : require('../assets/user.png')
-          }
-          style={styles.avatar}
-          defaultSource={require('../assets/user.png')}  // Ảnh mặc định khi load lỗi
-        />
-      </View>
-      <View style={styles.reviewContent}>
-        <View style={styles.reviewHeader}>
-          <Text style={styles.reviewName}>
-            {item.user?.username || 'Người dùng'}
-          </Text>
-          <View style={styles.ratingBadge}>
-            <Text style={styles.ratingBadgeText}>★ {item.rating}</Text>
-          </View>
+        <View style={styles.avatarContainer}>
+          <Image
+            source={getAvatarSource(item.user?.avatar)}
+            style={styles.avatar}
+            defaultSource={require('../assets/user.png')}
+            onError={error => {
+              console.log('Error loading avatar:', error.nativeEvent.error);
+            }}
+          />
         </View>
-        <Text style={styles.reviewDate}>
-          {item.review_date ? 
-            new Date(item.review_date).toLocaleDateString('vi-VN', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric'
-            })
-            : 'Không có ngày'}
-        </Text>
-        <Text style={styles.reviewComment}>{item.comment}</Text>
+        <View style={styles.reviewContent}>
+          <View style={styles.reviewHeader}>
+            <Text style={styles.reviewName}>
+              {item.user?.username || 'Người dùng'}
+            </Text>
+            <View style={styles.ratingBadge}>
+              <Text style={styles.ratingBadgeText}>★ {item.rating}</Text>
+            </View>
+          </View>
+          <Text style={styles.reviewDate}>
+            {item.review_date
+              ? new Date(item.review_date).toLocaleDateString('vi-VN', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                })
+              : 'Không có ngày'}
+          </Text>
+          <Text style={styles.reviewComment}>{item.comment}</Text>
+        </View>
       </View>
-    </View>
     );
   };
   if (loading) {
@@ -99,20 +125,20 @@ export default function ReviewScreen() {
       </View>
     );
   }
-  
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.iconButton}>
           <Icon name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.title}>Đánh giá</Text>
         {/* Chừa khoảng trống thay vì icon bên phải */}
         <View style={{width: 24}} />
       </View>
-
 
       {/* Rating Overview */}
       <View style={styles.ratingOverview}>
@@ -166,8 +192,7 @@ export default function ReviewScreen() {
       {/* Nút viết đánh giá */}
       <TouchableOpacity
         style={styles.writeReviewButton}
-        onPress={() => navigation.navigate('WriteReview', {roomId})}
-      >
+        onPress={() => navigation.navigate('WriteReview', {roomId})}>
         <Text style={styles.writeReviewText}>Viết đánh giá</Text>
       </TouchableOpacity>
     </View>

@@ -4,9 +4,9 @@ import React,{useEffect} from 'react'
 const WelcomeScreen = ({navigation}) => {
     useEffect(() => {
         const timer = setTimeout(() => {
-          navigation.replace('OnBoard'); // Chuyển sang màn hình Home sau 3 giây
+          navigation.replace('OnBoard'); 
         }, 3000);
-        return () => clearTimeout(timer); // Dọn dẹp timer khi component unmount
+        return () => clearTimeout(timer); 
     }, [navigation]);
   return (
     <View>

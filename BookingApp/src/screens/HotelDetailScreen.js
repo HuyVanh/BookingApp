@@ -68,18 +68,23 @@ export default function HotelDetailScreen({route}) {
   useEffect(() => {
     const fetchReviews = async () => {
       try {
-        console.log('Fetching reviews for Room ID:', roomId);
-        // Thay đổi endpoint nếu khác
+        console.log('Đang lấy reviews cho Room ID:', roomId);
         const res = await api.get(`/room-reviews/room/${roomId}`);
-        console.log('Reviews response:', res.data);
-        setReviews(res.data);
+
+        // Log response trước khi set state
+        console.log('Raw API Response:', JSON.stringify(res.data, null, 2));
+
+        if (Array.isArray(res.data)) {
+          setReviews(res.data);
+        } else {
+          console.error('Response không phải array:', res.data);
+        }
       } catch (err) {
         console.error('Lỗi khi lấy đánh giá:', err);
       }
     };
     fetchReviews();
   }, [roomId]);
-  console.log('adminId:', adminId);
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -122,6 +127,30 @@ export default function HotelDetailScreen({route}) {
         }
       })
       .catch(err => console.error('An error occurred', err));
+  };
+  const getAvatarSource = avatarUrl => {
+    if (!avatarUrl) {
+      return require('../assets/user.png');
+    }
+
+    // Nếu là URL Cloudinary
+    if (avatarUrl.includes('cloudinary.com')) {
+      return {uri: avatarUrl};
+    }
+
+    // Nếu là URL tương đối (bắt đầu bằng '/uploads')
+    if (avatarUrl.startsWith('/uploads')) {
+      return {
+        uri: `https://backendbookingapp-2fav.onrender.com${avatarUrl}`,
+      };
+    }
+
+    // Nếu là URL đầy đủ
+    if (avatarUrl.startsWith('http')) {
+      return {uri: avatarUrl};
+    }
+
+    return require('../assets/user.png');
   };
 
   return (
@@ -298,7 +327,6 @@ export default function HotelDetailScreen({route}) {
         <View style={styles.reviewSection}>
           <View style={styles.reviewHeader}>
             <Text style={styles.sectionTitle}>Đánh giá</Text>
-            {/* Chỉ hiển thị nút nếu có ít nhất 1 review (bạn có thể thay điều kiện) */}
             {reviews.length > 0 && (
               <TouchableOpacity
                 onPress={() =>
@@ -322,13 +350,15 @@ export default function HotelDetailScreen({route}) {
               <View style={styles.reviewHeader}>
                 <View style={styles.userInfo}>
                   <Image
-                    source={
-                      r.user?.avatar
-                        ? {uri: `${api.defaults.baseURL}${r.user.avatar}`} // Thêm baseURL vào trước đường dẫn avatar
-                        : require('../assets/user.png')
-                    }
+                    source={getAvatarSource(r.user?.avatar)}
                     style={styles.userAvatar}
-                    defaultSource={require('../assets/user.png')} // Thêm defaultSource để hiển thị khi load lỗi
+                    defaultSource={require('../assets/user.png')}
+                    onError={error => {
+                      console.log(
+                        'Error loading avatar:',
+                        error.nativeEvent.error,
+                      );
+                    }}
                   />
                   <View style={styles.userTextInfo}>
                     <Text style={styles.reviewUser}>

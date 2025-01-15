@@ -33,33 +33,64 @@ export const AuthProvider = ({children}) => {
       setError(error);
     }
   };
+    // Hàm kiểm tra và cập nhật trạng thái user
+    const checkUser = async () => {
+      try {
+        const token = await AsyncStorage.getItem('token');
+        if (token) {
+          setAuthToken(token);
+          const response = await api.get('/auth/me');
+          setUser(response.data);
+        }
+      } catch (error) {
+        console.error('Error checking user:', error);
+        // Nếu có lỗi, xóa token và reset user
+        await AsyncStorage.removeItem('token');
+        setAuthToken(null);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    // Hàm đăng xuất
+    const logout = async () => {
+      setLoading(true);
+      try {
+        await AsyncStorage.removeItem('token');
+        setAuthToken(null);
+        setUser(null);
+      } catch (error) {
+        console.error('Logout error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Hàm đăng xuất
-  const logout = async () => {
+   // Hàm đăng nhập
+   const login = async (username, password) => {
     try {
-      setUser(null);
-      await AsyncStorage.removeItem('token');
-      setAuthToken(null);
-    } catch (error) {
-      console.error('Logout error:', error);
-      setError(error);
-    }
-  };
-
-  // Hàm đăng nhập
-  const login = async (username, password) => {
-    try {
+      setLoading(true);
       const response = await api.post('/auth/login', {username, password});
       const userData = response.data;
-      setUser(userData);
+      
       await AsyncStorage.setItem('token', userData.token);
       setAuthToken(userData.token);
+      
+      // Fetch user profile sau khi login
+      const profileResponse = await api.get('/auth/me');
+      setUser(profileResponse.data);
+      
+      return userData;
     } catch (error) {
       console.error('Login error:', error);
-      setError(error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
+  useEffect(() => {
+    checkUser();
+  }, []);
 
   useEffect(() => {
     const checkLoginStatus = async () => {
@@ -90,6 +121,7 @@ export const AuthProvider = ({children}) => {
         loading,
         login,
         logout,
+        checkUser,
         fetchTickets,
         tickets,
         fetchNotifications,

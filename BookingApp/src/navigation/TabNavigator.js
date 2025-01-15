@@ -1,8 +1,10 @@
-import React, { useContext } from 'react';
+import React, { useContext  ,useCallback } from 'react';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {Image} from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons'; // Thêm import Icon
+import Icon from 'react-native-vector-icons/Ionicons'; 
 import { AuthContext } from '../contexts/AuthContext';
+import { useFocusEffect } from '@react-navigation/native';
+import api from '../services/api';
 
 // User Screens
 import HomeScreen from '../screens/HomeScreen';
@@ -18,8 +20,24 @@ import StaffProfileScreen from '../screens/staff/StaffProfileScreen';
 const Tab = createBottomTabNavigator();
 
 const TabNavigator = () => {
-  const { user } = useContext(AuthContext);
+  const { user, setUser } = useContext(AuthContext);
   const isStaff = user?.user?.role === 'staff';
+  useFocusEffect(
+    useCallback(() => {
+      const refreshUserData = async () => {
+        try {
+          const response = await api.get('/auth/me');
+          if (response.data) {
+            setUser(response.data);
+          }
+        } catch (error) {
+          console.error('Error refreshing user data:', error);
+        }
+      };
+
+      refreshUserData();
+    }, [setUser])
+  );
 
   const getIcon = (route, focused) => {
     if (isStaff) {

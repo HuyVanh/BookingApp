@@ -15,7 +15,7 @@ const windowWidth = Dimensions.get('window').width;
 
 export default function AlbumScreen({ route }) {
   const navigation = useNavigation();
-  const { images } = route.params; // Thay đổi từ img thành images
+  const { images } = route.params; 
 
   // Kiểm tra xem có ảnh không
   if (!images || images.length === 0) {
@@ -41,7 +41,6 @@ export default function AlbumScreen({ route }) {
     <TouchableOpacity 
       style={styles.imageContainer}
       onPress={() => {
-        // Có thể thêm chức năng xem ảnh full màn hình ở đây
         console.log('Pressed image:', item);
       }}
     >

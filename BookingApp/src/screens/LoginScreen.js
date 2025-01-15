@@ -1,4 +1,4 @@
-// src/screens/LoginScreen.js
+
 import React, {useState, useContext} from 'react';
 import {
   View,
@@ -44,7 +44,6 @@ const LoginScreen = ({navigation}) => {
       try {
         await login(username, password);
         console.log("Login successful, user data:", username);
-        navigation.replace('Home');
       } catch (error) {
         let errorMessage = 'Đã có lỗi xảy ra';
   
